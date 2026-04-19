@@ -722,6 +722,17 @@
       return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
+    function parseHttpStatusCodeFromError(error) {
+      const msg = String(error?.message || "");
+      const m = msg.match(/HTTP\s+(\d{3})/);
+      return m ? Number(m[1]) : null;
+    }
+
+    function isRetryableImageCreateError(error) {
+      const code = parseHttpStatusCodeFromError(error);
+      return [403, 408, 409, 425, 429, 500, 502, 503, 504].includes(code);
+    }
+
     function normalizeApiKey() {
       let key = String(els.apiKey.value || "").trim();
       key = key.replace(/^Authorization\s*[:\t ]*\s*/i, "").trim();
@@ -791,6 +802,7 @@
 
       let requestUrl = directUrl;
       let init;
+      let requestMode = isProxy ? "proxy" : "direct";
 
       if (isProxy) {
         requestUrl = proxyUrl;
@@ -808,6 +820,7 @@
           try {
             res = await fetch(proxyUrl, proxyInit);
             requestUrl = proxyUrl;
+            requestMode = "proxy_fallback";
             if (els.requestMode.value !== "proxy") {
               els.requestMode.value = "proxy";
               saveConfig();
@@ -825,7 +838,16 @@
       const text = await res.text();
       const data = safeJsonParse(text) || { raw_text: text };
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status} ${res.statusText} -> ${JSON.stringify(data)}`);
+        const responseBody = text && text.trim() ? data : { raw_text: "<empty>" };
+        const hint = res.status === 403
+          ? "403 通常是鉴权/权限/额度或风控拦截；若偶发可重试。"
+          : null;
+        const diagnostic = {
+          request: { method, path, mode: requestMode, url: requestUrl },
+          response: responseBody,
+          hint
+        };
+        throw new Error(`HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ""} -> ${JSON.stringify(diagnostic)}`);
       }
       return { data, url: requestUrl, status: res.status };
     }
@@ -961,22 +983,44 @@
         aspect_ratio: cfg.image_aspect_ratio,
         payload: cfg.image_payload
       };
-      const { data } = await apiCall("POST", IMAGE_ENDPOINT, payload);
-      const taskId = data.task_id || data.id;
-      if (!taskId) throw new Error(`角色 ${character.name} 创建任务成功但没拿到 task_id`);
+      const maxAttempts = 3;
+      let lastError = null;
 
-      state.characterJobs.set(character.name, {
-        role: character,
-        task_id: taskId,
-        state: data.state || "created",
-        request: payload,
-        create_response: data,
-        image_url: "",
-        cover_url: "",
-        poll_history: []
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          const { data } = await apiCall("POST", IMAGE_ENDPOINT, payload);
+          const taskId = data.task_id || data.id;
+          if (!taskId) throw new Error(`角色 ${character.name} 创建任务成功但没拿到 task_id`);
+
+          state.characterJobs.set(character.name, {
+            role: character,
+            task_id: taskId,
+            state: data.state || "created",
+            request: payload,
+            create_response: data,
+            image_url: "",
+            cover_url: "",
+            poll_history: []
+          });
+          renderAll();
+          return taskId;
+        } catch (error) {
+          lastError = error;
+          if (attempt < maxAttempts && isRetryableImageCreateError(error)) {
+            await sleep(1200 * attempt);
+            continue;
+          }
+          break;
+        }
+      }
+
+      log(`角色图创建失败: ${character.name}`, {
+        method: "POST",
+        endpoint: `${API_BASE}${IMAGE_ENDPOINT}`,
+        body: payload,
+        error: lastError?.message || String(lastError)
       });
-      renderAll();
-      return taskId;
+      throw (lastError || new Error(`角色 ${character.name} 创建失败`));
     }
 
     async function createSceneVideoTask(scene, cfg) {
