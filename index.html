@@ -347,11 +347,31 @@
               <input id="videoModel" type="text" list="videoModelOptions" value="viduq3-turbo" placeholder="可输入文档中的新模型名" />
             </div>
           </div>
+          <div class="row">
+            <div class="field">
+              <label for="imageApiMode">角色图接口</label>
+              <select id="imageApiMode">
+                <option value="classic" selected>reference2image（原接口）</option>
+                <option value="nano">reference2image/nano（文生图）</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="imageResolution">角色图 resolution（nano）</label>
+              <select id="imageResolution">
+                <option value="1K" selected>1K</option>
+                <option value="2K">2K</option>
+                <option value="4K">4K</option>
+              </select>
+            </div>
+          </div>
           <datalist id="imageModelOptions">
             <option value="viduq2"></option>
             <option value="viduq1"></option>
             <option value="vidu2.0"></option>
             <option value="vidu1.5"></option>
+            <option value="q2-fast"></option>
+            <option value="q2-pro"></option>
+            <option value="q3-fast"></option>
           </datalist>
           <datalist id="videoModelOptions">
             <option value="viduq3-turbo"></option>
@@ -369,7 +389,18 @@
               <select id="imageAspectRatio">
                 <option value="16:9" selected>16:9</option>
                 <option value="9:16">9:16</option>
+                <option value="2:3">2:3</option>
+                <option value="3:4">3:4</option>
+                <option value="4:5">4:5</option>
                 <option value="1:1">1:1</option>
+                <option value="5:4">5:4</option>
+                <option value="4:3">4:3</option>
+                <option value="3:2">3:2</option>
+                <option value="21:9">21:9</option>
+                <option value="1:4">1:4（q3-fast）</option>
+                <option value="4:1">4:1（q3-fast）</option>
+                <option value="1:8">1:8（q3-fast）</option>
+                <option value="8:1">8:1（q3-fast）</option>
               </select>
             </div>
             <div class="field">
@@ -441,6 +472,7 @@
           <div class="hint" style="margin-top: 8px;">
             鉴权头使用 <code>Authorization: Token {api_key}</code>。
             图片任务默认仅使用 <code>appearance_prompt</code>，可手动开启拼接 <code>voice_prompt</code>。
+            角色图支持 <code>/reference2image</code> 与 <code>/reference2image/nano</code>（nano 模式使用 <code>resolution</code>，并忽略 <code>seed</code>）。
             视频任务使用 <code>subjects + visual_prompt</code>，场景里的 <code>@角色名</code> 会按主体名引用。
             部署到 GitHub Pages 时，请将代理地址配置为你的 Cloudflare Worker 域名。
           </div>
@@ -532,6 +564,7 @@
   <script>
     const API_BASE = "https://api.vidu.cn/ent/v2";
     const IMAGE_ENDPOINT = "/reference2image";
+    const IMAGE_ENDPOINT_NANO = "/reference2image/nano";
     const VIDEO_ENDPOINT = "/reference2video";
     const TASK_CREATIONS = (id) => `/tasks/${encodeURIComponent(id)}/creations`;
     const TASK_LIST = "/tasks";
@@ -551,6 +584,8 @@
       proxyBaseUrl: document.getElementById("proxyBaseUrl"),
       imageModel: document.getElementById("imageModel"),
       videoModel: document.getElementById("videoModel"),
+      imageApiMode: document.getElementById("imageApiMode"),
+      imageResolution: document.getElementById("imageResolution"),
       imageAspectRatio: document.getElementById("imageAspectRatio"),
       imageSeed: document.getElementById("imageSeed"),
       imagePayload: document.getElementById("imagePayload"),
@@ -757,6 +792,8 @@
         proxy_base_url: normalizeProxyBase(els.proxyBaseUrl.value || "https://vidu-story-proxy.vidustorydemo.workers.dev"),
         image_model: String(els.imageModel.value || "viduq2").trim() || "viduq2",
         video_model: String(els.videoModel.value || "viduq3-turbo").trim() || "viduq3-turbo",
+        image_api_mode: els.imageApiMode.value,
+        image_resolution: els.imageResolution.value,
         image_aspect_ratio: els.imageAspectRatio.value,
         image_seed: Number(els.imageSeed.value || 0),
         image_payload: String(els.imagePayload.value || ""),
@@ -977,23 +1014,35 @@
       return c?.cover_url || "";
     }
 
+    function syncImageApiModeUi() {
+      const isNano = els.imageApiMode.value === "nano";
+      els.imageSeed.disabled = isNano;
+      els.imageSeed.title = isNano ? "nano 文生图接口不支持 seed，该参数会被忽略" : "";
+      els.imageResolution.disabled = !isNano;
+    }
+
     async function createCharacterImageTask(character, cfg) {
       const prompt = cfg.use_voice_in_image_prompt
         ? `${character.appearance_prompt}\n角色声音气质：${character.voice_prompt}`
         : `${character.appearance_prompt}`;
+      const imageEndpoint = cfg.image_api_mode === "nano" ? IMAGE_ENDPOINT_NANO : IMAGE_ENDPOINT;
       const payload = {
         model: cfg.image_model,
         prompt,
-        seed: cfg.image_seed,
         aspect_ratio: cfg.image_aspect_ratio,
         payload: cfg.image_payload
       };
+      if (cfg.image_api_mode === "nano") {
+        payload.resolution = cfg.image_resolution;
+      } else {
+        payload.seed = cfg.image_seed;
+      }
       const maxAttempts = 3;
       let lastError = null;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
         try {
-          const { data } = await apiCall("POST", IMAGE_ENDPOINT, payload);
+          const { data } = await apiCall("POST", imageEndpoint, payload);
           const taskId = data.task_id || data.id;
           if (!taskId) throw new Error(`角色 ${character.name} 创建任务成功但没拿到 task_id`);
 
@@ -1021,7 +1070,7 @@
 
       log(`角色图创建失败: ${character.name}`, {
         method: "POST",
-        endpoint: `${API_BASE}${IMAGE_ENDPOINT}`,
+        endpoint: `${API_BASE}${imageEndpoint}`,
         body: payload,
         error: lastError?.message || String(lastError)
       });
@@ -1566,6 +1615,8 @@
         proxyBaseUrl: els.proxyBaseUrl.value,
         imageModel: els.imageModel.value,
         videoModel: els.videoModel.value,
+        imageApiMode: els.imageApiMode.value,
+        imageResolution: els.imageResolution.value,
         imageAspectRatio: els.imageAspectRatio.value,
         imageSeed: els.imageSeed.value,
         imagePayload: els.imagePayload.value,
@@ -1595,6 +1646,8 @@
       els.proxyBaseUrl.value = d.proxyBaseUrl || "https://vidu-story-proxy.vidustorydemo.workers.dev";
       els.imageModel.value = d.imageModel || "viduq2";
       els.videoModel.value = d.videoModel || "viduq3-turbo";
+      els.imageApiMode.value = d.imageApiMode || "classic";
+      els.imageResolution.value = d.imageResolution || "1K";
       els.imageAspectRatio.value = d.imageAspectRatio || "16:9";
       els.imageSeed.value = d.imageSeed !== undefined ? String(d.imageSeed) : "0";
       els.imagePayload.value = d.imagePayload !== undefined ? String(d.imagePayload) : "";
@@ -1621,6 +1674,8 @@
         els.proxyBaseUrl,
         els.imageModel,
         els.videoModel,
+        els.imageApiMode,
+        els.imageResolution,
         els.imageAspectRatio,
         els.imageSeed,
         els.imagePayload,
@@ -1698,10 +1753,13 @@
       els.sequencePlayer.addEventListener("play", () => {
         updateSequenceInfoText("正在播放");
       });
+
+      els.imageApiMode.addEventListener("change", syncImageApiModeUi);
     }
 
     function init() {
       loadConfig();
+      syncImageApiModeUi();
       if (!String(els.jsonInput.value || "").trim()) {
         els.jsonInput.value = JSON.stringify(sampleJson, null, 2);
       }
@@ -1712,6 +1770,7 @@
         api_base: API_BASE,
         endpoints: {
           reference2image: `${API_BASE}${IMAGE_ENDPOINT}`,
+          reference2image_nano: `${API_BASE}${IMAGE_ENDPOINT_NANO}`,
           reference2video: `${API_BASE}${VIDEO_ENDPOINT}`,
           task_creations: `${API_BASE}/tasks/{id}/creations`,
           tasks_list: `${API_BASE}${TASK_LIST}`
