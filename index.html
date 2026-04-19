@@ -330,7 +330,7 @@
             </div>
             <div class="field">
               <label for="proxyBaseUrl">代理地址</label>
-              <input id="proxyBaseUrl" type="text" value="https://your-worker-name.your-subdomain.workers.dev" />
+              <input id="proxyBaseUrl" type="text" value="https://vidu-story-proxy.vidustorydemo.workers.dev" />
             </div>
           </div>
 
@@ -735,7 +735,7 @@
     function getConfig() {
       return {
         request_mode: els.requestMode.value,
-        proxy_base_url: normalizeProxyBase(els.proxyBaseUrl.value || "https://your-worker-name.your-subdomain.workers.dev"),
+        proxy_base_url: normalizeProxyBase(els.proxyBaseUrl.value || "https://vidu-story-proxy.vidustorydemo.workers.dev"),
         image_model: els.imageModel.value,
         video_model: els.videoModel.value,
         image_aspect_ratio: els.imageAspectRatio.value,
@@ -1540,7 +1540,7 @@
       if (!d) return;
       els.apiKey.value = d.apiKey || "";
       els.requestMode.value = d.requestMode || "proxy";
-      els.proxyBaseUrl.value = d.proxyBaseUrl || "https://your-worker-name.your-subdomain.workers.dev";
+      els.proxyBaseUrl.value = d.proxyBaseUrl || "https://vidu-story-proxy.vidustorydemo.workers.dev";
       els.imageModel.value = d.imageModel || "viduq2";
       els.videoModel.value = d.videoModel || "viduq3-turbo";
       els.imageAspectRatio.value = d.imageAspectRatio || "16:9";

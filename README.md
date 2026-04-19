@@ -19,6 +19,9 @@ npx wrangler deploy
 
 把该地址填入页面「代理地址」。
 
+当前已部署示例：
+`https://vidu-story-proxy.vidustorydemo.workers.dev`
+
 ## 3) 本地预览
 ```bash
 python3 -m http.server 8080
