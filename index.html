@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vidu 角色图+参考生视频 Pipeline Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b1020;
+      color: #e2e8f0;
+    }
+    .page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+    .header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+      background: linear-gradient(120deg, #0f172a, #1e293b);
+    }
+    .header h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+    .header p {
+      margin: 0;
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .main {
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 12px;
+      padding: 12px;
+      min-height: 0;
+    }
+    .panel {
+      min-height: 0;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.82);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      overflow: auto;
+    }
+    .left {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+    .right {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+    .card {
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 10px;
+      background: rgba(2, 6, 23, 0.7);
+      padding: 10px;
+    }
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #f8fafc;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+    .field label {
+      color: #cbd5e1;
+      font-size: 12px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 8px;
+      padding: 8px 9px;
+      background: #020617;
+      color: #e2e8f0;
+      font-size: 13px;
+      outline: none;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.18);
+    }
+    textarea {
+      min-height: 320px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+      line-height: 1.5;
+    }
+    .switch {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #cbd5e1;
+      margin-top: 3px;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled {
+      opacity: 0.55;
+      transform: none;
+      cursor: not-allowed;
+    }
+    .primary {
+      color: #fff;
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+    }
+    .secondary {
+      color: #e2e8f0;
+      background: rgba(148, 163, 184, 0.16);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+    .danger {
+      color: #fff;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+    }
+    .status {
+      font-size: 13px;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .status.error { color: #fca5a5; }
+    .hint {
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .metric {
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      padding: 8px;
+      background: rgba(2, 6, 23, 0.75);
+    }
+    .metric .k {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .metric .v {
+      margin-top: 4px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+      text-align: left;
+      padding: 6px;
+      vertical-align: top;
+      word-break: break-word;
+    }
+    th { color: #94a3b8; font-weight: 600; }
+    .tag {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.4;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    .s-created,.s-queueing,.s-processing { color: #facc15; }
+    .s-success { color: #4ade80; }
+    .s-failed { color: #f87171; }
+    pre {
+      margin: 0;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      background: #020617;
+      color: #dbeafe;
+      padding: 9px;
+      min-height: 120px;
+      max-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 12px;
+      line-height: 1.5;
+      font-family: Consolas, "Courier New", monospace;
+    }
+    .grid-media {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .media-card {
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      background: rgba(2, 6, 23, 0.8);
+      padding: 8px;
+    }
+    .media-card .title {
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: #e2e8f0;
+    }
+    .media-card .sub {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-bottom: 6px;
+    }
+    .empty-thumb {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border: 1px dashed rgba(148, 163, 184, 0.35);
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      color: #94a3b8;
+      font-size: 11px;
+      text-align: center;
+      padding: 8px;
+      background: rgba(15, 23, 42, 0.45);
+    }
+    .sequence-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .sequence-info {
+      font-size: 12px;
+      color: #93c5fd;
+      margin-bottom: 8px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .sequence-list {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.6;
+      max-height: 160px;
+      overflow: auto;
+    }
+    .sequence-list li.active {
+      color: #7dd3fc;
+      font-weight: 700;
+    }
+    img, video {
+      width: 100%;
+      border-radius: 6px;
+      background: #000;
+    }
+    .link {
+      margin-top: 5px;
+      display: block;
+      color: #7dd3fc;
+      font-size: 11px;
+      text-decoration: none;
+      word-break: break-all;
+    }
+    @media (max-width: 1240px) {
+      .main { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <h1>Vidu 剧本批量生成 Demo（角色图 -> 参考生视频）</h1>
+      <p>解析剧本 JSON 后并发创建任务：先批量角色图，再批量场景视频；支持 audio / auto_subjects / audio_type / model 动态设置。</p>
+    </div>
+
+    <div class="main">
+      <div class="panel left">
+        <div class="card">
+          <h2>运行配置</h2>
+          <div class="field">
+            <label for="apiKey">API Key</label>
+            <input id="apiKey" type="text" placeholder="请输入 Vidu API Key" />
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="requestMode">请求方式</label>
+              <select id="requestMode">
+                <option value="proxy" selected>代理服务</option>
+                <option value="direct">浏览器直连</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="proxyBaseUrl">代理地址</label>
+              <input id="proxyBaseUrl" type="text" value="https://your-worker-name.your-subdomain.workers.dev" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="imageModel">图片模型</label>
+              <select id="imageModel">
+                <option value="viduq2">viduq2</option>
+                <option value="viduq1">viduq1</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="videoModel">视频模型</label>
+              <select id="videoModel">
+                <option value="viduq3-turbo">viduq3-turbo</option>
+                <option value="viduq3">viduq3</option>
+                <option value="viduq2-pro">viduq2-pro</option>
+                <option value="viduq2">viduq2</option>
+                <option value="viduq1">viduq1</option>
+                <option value="vidu2.0">vidu2.0</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="imageAspectRatio">角色图 aspect_ratio</label>
+              <select id="imageAspectRatio">
+                <option value="16:9" selected>16:9</option>
+                <option value="9:16">9:16</option>
+                <option value="1:1">1:1</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="imageSeed">角色图 seed</label>
+              <input id="imageSeed" type="number" step="1" value="0" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="imagePayload">角色图 payload</label>
+            <input id="imagePayload" type="text" value="" placeholder="可留空，默认空字符串" />
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="duration">视频时长</label>
+              <input id="duration" type="number" min="1" step="1" value="5" />
+            </div>
+            <div class="field">
+              <label for="aspectRatio">比例</label>
+              <select id="aspectRatio">
+                <option value="16:9">16:9</option>
+                <option value="9:16">9:16</option>
+                <option value="1:1">1:1</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="resolution">视频分辨率</label>
+              <select id="resolution">
+                <option value="540p">540p</option>
+                <option value="720p" selected>720p</option>
+                <option value="1080p">1080p</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="audioType">audio_type</label>
+              <select id="audioType">
+                <option value="all">all（音效+人声）</option>
+                <option value="speech_only">speech_only（仅人声）</option>
+                <option value="sound_effect_only">sound_effect_only（仅音效）</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="imageConcurrency">角色图并发</label>
+              <input id="imageConcurrency" type="number" min="1" max="10" step="1" value="3" />
+            </div>
+            <div class="field">
+              <label for="videoConcurrency">场景视频并发</label>
+              <input id="videoConcurrency" type="number" min="1" max="10" step="1" value="2" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="pollInterval">轮询间隔（毫秒）</label>
+            <input id="pollInterval" type="number" min="2000" step="1000" value="8000" />
+          </div>
+
+          <label class="switch"><input id="audio" type="checkbox" checked /> audio = true（音视频直出）</label>
+          <label class="switch"><input id="autoSubjects" type="checkbox" /> auto_subjects = true</label>
+          <label class="switch"><input id="offPeak" type="checkbox" /> off_peak = true（错峰）</label>
+          <label class="switch"><input id="useVoiceInImagePrompt" type="checkbox" /> 角色图 prompt 拼接 voice_prompt（排障建议先关闭）</label>
+
+          <div class="hint" style="margin-top: 8px;">
+            鉴权头使用 <code>Authorization: Token {api_key}</code>。
+            图片任务默认仅使用 <code>appearance_prompt</code>，可手动开启拼接 <code>voice_prompt</code>。
+            视频任务使用 <code>subjects + visual_prompt</code>，场景里的 <code>@角色名</code> 会按主体名引用。
+            部署到 GitHub Pages 时，请将代理地址配置为你的 Cloudflare Worker 域名。
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>剧本 JSON</h2>
+          <textarea id="jsonInput"></textarea>
+          <div class="actions" style="margin-top: 8px;">
+            <button id="fillBtn" class="secondary">填充示例</button>
+            <button id="parseBtn" class="secondary">解析并校验</button>
+            <button id="runImageBtn" class="primary">1. 并发生成角色图</button>
+            <button id="singleApifoxBtn" class="secondary">单条Apifox同参测试</button>
+            <button id="runVideoBtn" class="primary">2. 并发生成场景视频</button>
+            <button id="runAllBtn" class="primary">一键全流程</button>
+            <button id="refreshTasksBtn" class="secondary">查任务列表</button>
+            <button id="exportBtn" class="secondary">导出结果 JSON</button>
+            <button id="stopBtn" class="danger" disabled>停止</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel right">
+        <div class="card">
+          <h2>运行状态</h2>
+          <div id="statusText" class="status">待开始</div>
+          <div class="metrics" style="margin-top: 8px;">
+            <div class="metric"><div class="k">角色数</div><div id="mChars" class="v">-</div></div>
+            <div class="metric"><div class="k">场景数</div><div id="mScenes" class="v">-</div></div>
+            <div class="metric"><div class="k">角色图成功</div><div id="mImageSuccess" class="v">-</div></div>
+            <div class="metric"><div class="k">视频成功</div><div id="mVideoSuccess" class="v">-</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>角色图任务</h2>
+          <table>
+            <thead>
+              <tr><th>角色</th><th>任务ID</th><th>状态</th><th>预览</th></tr>
+            </thead>
+            <tbody id="characterTable"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>场景视频任务</h2>
+          <table>
+            <thead>
+              <tr><th>场景</th><th>任务ID</th><th>状态</th><th>预览</th></tr>
+            </thead>
+            <tbody id="sceneTable"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>角色图预览</h2>
+          <div id="imageGallery" class="grid-media"></div>
+        </div>
+
+        <div class="card">
+          <h2>视频预览</h2>
+          <div id="videoGallery" class="grid-media"></div>
+        </div>
+
+        <div class="card">
+          <h2>场景视频顺序拼接播放</h2>
+          <div class="sequence-actions">
+            <button id="playSequenceBtn" class="primary">从 scene 1 开始播放</button>
+            <button id="stopSequenceBtn" class="secondary">停止播放</button>
+          </div>
+          <div id="sequenceInfo" class="sequence-info">暂无可拼接视频</div>
+          <video id="sequencePlayer" controls playsinline></video>
+          <ol id="sequenceList" class="sequence-list"></ol>
+        </div>
+
+        <div class="card">
+          <h2>结构化结果</h2>
+          <pre id="resultJson">{}</pre>
+        </div>
+
+        <div class="card">
+          <h2>详细日志（仅失败与最终结果）</h2>
+          <pre id="logOutput"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "https://api.vidu.cn/ent/v2";
+    const IMAGE_ENDPOINT = "/reference2image";
+    const VIDEO_ENDPOINT = "/reference2video";
+    const TASK_CREATIONS = (id) => `/tasks/${encodeURIComponent(id)}/creations`;
+    const TASK_LIST = "/tasks";
+    const TERMINAL = new Set(["success", "failed"]);
+    const storageKey = "vidu-story-pipeline-config-v1";
+    const APIFOX_SINGLE_TEST_PAYLOAD = {
+      model: "viduq2",
+      prompt: "[中景特写]，[直视镜头]，[写实都市剧风格]，[女性/28岁/鹅蛋脸/烈焰红唇/大波浪卷发/名牌黑色职业装戴大框墨镜]，[中性表情]，[纯灰色背景]，[影棚光]，[8k分辨率]",
+      seed: 0,
+      aspect_ratio: "16:9",
+      payload: ""
+    };
+
+    const els = {
+      apiKey: document.getElementById("apiKey"),
+      requestMode: document.getElementById("requestMode"),
+      proxyBaseUrl: document.getElementById("proxyBaseUrl"),
+      imageModel: document.getElementById("imageModel"),
+      videoModel: document.getElementById("videoModel"),
+      imageAspectRatio: document.getElementById("imageAspectRatio"),
+      imageSeed: document.getElementById("imageSeed"),
+      imagePayload: document.getElementById("imagePayload"),
+      duration: document.getElementById("duration"),
+      aspectRatio: document.getElementById("aspectRatio"),
+      resolution: document.getElementById("resolution"),
+      audio: document.getElementById("audio"),
+      audioType: document.getElementById("audioType"),
+      autoSubjects: document.getElementById("autoSubjects"),
+      offPeak: document.getElementById("offPeak"),
+      useVoiceInImagePrompt: document.getElementById("useVoiceInImagePrompt"),
+      imageConcurrency: document.getElementById("imageConcurrency"),
+      videoConcurrency: document.getElementById("videoConcurrency"),
+      pollInterval: document.getElementById("pollInterval"),
+      jsonInput: document.getElementById("jsonInput"),
+      fillBtn: document.getElementById("fillBtn"),
+      parseBtn: document.getElementById("parseBtn"),
+      runImageBtn: document.getElementById("runImageBtn"),
+      singleApifoxBtn: document.getElementById("singleApifoxBtn"),
+      runVideoBtn: document.getElementById("runVideoBtn"),
+      runAllBtn: document.getElementById("runAllBtn"),
+      refreshTasksBtn: document.getElementById("refreshTasksBtn"),
+      exportBtn: document.getElementById("exportBtn"),
+      stopBtn: document.getElementById("stopBtn"),
+      statusText: document.getElementById("statusText"),
+      mChars: document.getElementById("mChars"),
+      mScenes: document.getElementById("mScenes"),
+      mImageSuccess: document.getElementById("mImageSuccess"),
+      mVideoSuccess: document.getElementById("mVideoSuccess"),
+      characterTable: document.getElementById("characterTable"),
+      sceneTable: document.getElementById("sceneTable"),
+      imageGallery: document.getElementById("imageGallery"),
+      videoGallery: document.getElementById("videoGallery"),
+      playSequenceBtn: document.getElementById("playSequenceBtn"),
+      stopSequenceBtn: document.getElementById("stopSequenceBtn"),
+      sequenceInfo: document.getElementById("sequenceInfo"),
+      sequencePlayer: document.getElementById("sequencePlayer"),
+      sequenceList: document.getElementById("sequenceList"),
+      resultJson: document.getElementById("resultJson"),
+      logOutput: document.getElementById("logOutput")
+    };
+
+    const state = {
+      stopped: false,
+      running: false,
+      parsed: null,
+      characterJobs: new Map(),
+      sceneJobs: new Map(),
+      characterImageByName: new Map(),
+      pollCountByTaskId: new Map(),
+      tasksListSnapshot: null,
+      requestSeq: 0,
+      sequenceItems: [],
+      sequenceIndex: -1
+    };
+
+    const sampleJson = {
+      title: "销冠徐甜甜的职场铁腕",
+      main_character: [
+        {
+          id: "char_01",
+          name: "徐甜甜",
+          appearance_prompt: "[中景特写]，[直视镜头]，[写实都市剧风格]，[女性/28岁/鹅蛋脸/烈焰红唇/大波浪卷发/名牌黑色职业装戴大框墨镜]，[中性表情]，[纯灰色背景]，[影棚光]，[8k分辨率]",
+          voice_prompt: "冷静而自信的成熟女声，语气带着不容置疑的傲气"
+        },
+        {
+          id: "char_02",
+          name: "李美丽",
+          appearance_prompt: "[中景特写]，[直视镜头]，[写实都市剧风格]，[女性/25岁/圆脸/高马尾/身着浅灰色修身助理西装]，[中性表情]，[纯灰色背景]，[影棚光]，[8k分辨率]",
+          voice_prompt: "略显急促且谄媚的年轻女声"
+        },
+        {
+          id: "char_03",
+          name: "魏三",
+          appearance_prompt: "[中景特写]，[直视镜头]，[写实都市剧风格]，[男性/40岁/面皮黝黑/平头短发/深蓝色保安制服配对讲机]，[中性表情]，[纯灰色背景]，[影棚光]，[8k分辨率]",
+          voice_prompt: "粗犷且愤怒的中年男声，语速较快"
+        },
+        {
+          id: "char_04",
+          name: "钱大方",
+          appearance_prompt: "[中景特写]，[直视镜头]，[写实都市剧风格]，[男性/50岁/微胖/略微秃顶/金边眼镜/条纹西装]，[中性表情]，[纯灰色背景]，[影棚光]，[8k分辨率]",
+          voice_prompt: "卑微讨好的中年男音，语气极其谦卑"
+        },
+        {
+          id: "char_05",
+          name: "苏大强",
+          appearance_prompt: "[中景特写]，[直视镜头]，[写实都市剧风格]，[男性/30岁/长相平平/略显颓废/穿着普通蓝色运动夹克]，[中性表情]，[纯灰色背景]，[影棚光]，[8k分辨率]",
+          voice_prompt: "哀求且嘶哑的青年男声，情绪激动"
+        }
+      ],
+      scenes: [
+        {
+          index: 1,
+          visual_prompt: "写实都市剧风格，写字楼停车场日光充沛，全景跟拍，@李美丽 快速下车走向后排，为戴墨镜的 @徐甜甜 开启车门。旁白：'我叫徐甜甜，是这家公司的销冠，不管再难的事，只要我出面，没有摆不平。'",
+          subtitle: "我叫徐甜甜，是这家公司的销冠，不管再难的事，只要我出面，没有摆不平。",
+          has_character: ["徐甜甜", "李美丽"]
+        },
+        {
+          index: 2,
+          visual_prompt: "写实都市剧风格，停车场车位背景，中景切特写，@魏三 呆立前方直勾勾盯着，@徐甜甜 皱眉摘下墨镜示意，@李美丽 指着对方鼻子大喊：'来人，把这个不长眼的保安给甜甜姐开了！'",
+          subtitle: "李美丽：'来人，把这个不长眼的保安给甜甜姐开了！'",
+          has_character: ["徐甜甜", "李美丽", "魏三"]
+        },
+        {
+          index: 3,
+          visual_prompt: "写实都市剧风格，写字楼外墙阴影下，中景双人对峙，@魏三 愤怒挥手抗议，@徐甜甜 面色平静地直视前方。@魏三 说：'你敢，我可是老板的小舅子！' @徐甜甜 说：'哎呀，让你为难了，连老板一块开了？'",
+          subtitle: "魏三：'你敢，我可是老板的小舅子！' 徐甜甜：'不行的话，连老板一块开了？'",
+          has_character: ["徐甜甜", "魏三"]
+        },
+        {
+          index: 4,
+          visual_prompt: "写实都市剧风格，停车场车道旁，动态推镜头，@钱大方 满头大汗跑来对 @徐甜甜 连连鞠躬。@钱大方 说：'可不敢，甜甜姐，把这没眼色的拉出去痛打再开除，您看这样处理合适不？'",
+          subtitle: "钱大方：'可不敢，甜甜姐，把这个没眼色的保安给我拉出去痛打一顿再开除，您看合适不？'",
+          has_character: ["徐甜甜", "钱大方"]
+        },
+        {
+          index: 5,
+          visual_prompt: "写实都市剧风格，写字楼电梯厅前，中景侧拍，@苏大强 突然冲出拦住 @徐甜甜，满脸泪痕。@苏大强 哭号：'甜甜，你不能上去啊，你三天没合眼了，而且今天那个赵小四惦记你很久了！'",
+          subtitle: "苏大强：'甜甜，你不能上去啊，你三天没合眼了，而且今天那个赵小四惦记你很久了！'",
+          has_character: ["徐甜甜", "苏大强"]
+        },
+        {
+          index: 6,
+          visual_prompt: "写实都市剧风格，大厅入口处，特写转中景，@李美丽 尴尬笑着解释，@徐甜甜 面无表情地越过众人走向前方。@徐甜甜 说：'分手！凡阻挠我徐甜甜搞事业的一切障碍，必须清除！'",
+          subtitle: "李美丽：'钱总，这是甜甜姐谈了七年的男朋友！' 徐甜甜：'分手！凡阻挠我搞事业的一切障碍，必须清除！'",
+          has_character: ["徐甜甜", "李美丽", "苏大强"]
+        }
+      ]
+    };
+
+    function nowStr() {
+      return new Date().toLocaleString("zh-CN", { hour12: false });
+    }
+
+    function setStatus(text, isError) {
+      els.statusText.textContent = `[${nowStr()}] ${text}`;
+      els.statusText.classList.toggle("error", Boolean(isError));
+    }
+
+    function log(title, data) {
+      const head = `[${nowStr()}] ${title}`;
+      const body = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+      els.logOutput.textContent = `${head}\n${body}\n\n${els.logOutput.textContent}`;
+    }
+
+    function safeJsonParse(text) {
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function redactMediaUrls(input, keyName) {
+      if (Array.isArray(input)) {
+        return input.map((item) => redactMediaUrls(item, ""));
+      }
+      if (input && typeof input === "object") {
+        const out = {};
+        Object.entries(input).forEach(([k, v]) => {
+          out[k] = redactMediaUrls(v, k);
+        });
+        return out;
+      }
+      if (typeof input === "string") {
+        if (/^https?:\/\//i.test(input) && /(url|media|video|image|cover)/i.test(String(keyName || ""))) {
+          return "<hidden>";
+        }
+      }
+      return input;
+    }
+
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function normalizeApiKey() {
+      let key = String(els.apiKey.value || "").trim();
+      key = key.replace(/^Authorization\s*[:\t ]*\s*/i, "").trim();
+      key = key.replace(/^Token\s+/i, "").trim();
+      key = key.replace(/^Bearer\s+/i, "").trim();
+      if (!key) throw new Error("请先填写 API Key");
+      return key;
+    }
+
+    function normalizeProxyBase(url) {
+      return String(url || "").trim().replace(/\/+$/, "");
+    }
+
+    function getConfig() {
+      return {
+        request_mode: els.requestMode.value,
+        proxy_base_url: normalizeProxyBase(els.proxyBaseUrl.value || "https://your-worker-name.your-subdomain.workers.dev"),
+        image_model: els.imageModel.value,
+        video_model: els.videoModel.value,
+        image_aspect_ratio: els.imageAspectRatio.value,
+        image_seed: Number(els.imageSeed.value || 0),
+        image_payload: String(els.imagePayload.value || ""),
+        duration: Number(els.duration.value),
+        aspect_ratio: els.aspectRatio.value,
+        resolution: els.resolution.value,
+        audio: Boolean(els.audio.checked),
+        audio_type: els.audioType.value,
+        auto_subjects: Boolean(els.autoSubjects.checked),
+        off_peak: Boolean(els.offPeak.checked),
+        use_voice_in_image_prompt: Boolean(els.useVoiceInImagePrompt.checked),
+        image_concurrency: Math.max(1, Number(els.imageConcurrency.value) || 1),
+        video_concurrency: Math.max(1, Number(els.videoConcurrency.value) || 1),
+        poll_interval: Math.max(2000, Number(els.pollInterval.value) || 8000)
+      };
+    }
+
+    async function apiCall(method, path, body) {
+      const key = normalizeApiKey();
+      state.requestSeq += 1;
+      const cfg = getConfig();
+      const isProxy = cfg.request_mode === "proxy";
+      const directUrl = `${API_BASE}${path}`;
+      const proxyUrl = `${normalizeProxyBase(cfg.proxy_base_url)}/proxy/vidu`;
+      const directInit = {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Token ${key}`
+        }
+      };
+      if (body !== undefined) {
+        directInit.body = JSON.stringify(body);
+      }
+      const proxyPayload = {
+        method,
+        path,
+        apiKey: key,
+        body: body === undefined ? null : body
+      };
+      const proxyInit = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(proxyPayload)
+      };
+
+      let requestUrl = directUrl;
+      let init;
+
+      if (isProxy) {
+        requestUrl = proxyUrl;
+        init = proxyInit;
+      } else {
+        init = directInit;
+      }
+
+      let res;
+      try {
+        res = await fetch(requestUrl, init);
+      } catch (error) {
+        const msg = error.message || "Failed to fetch";
+        if (!isProxy) {
+          try {
+            res = await fetch(proxyUrl, proxyInit);
+            requestUrl = proxyUrl;
+            if (els.requestMode.value !== "proxy") {
+              els.requestMode.value = "proxy";
+              saveConfig();
+            }
+            setStatus("浏览器直连失败，已自动切换到本地代理模式", false);
+          } catch (proxyError) {
+            const proxyMsg = proxyError.message || "Failed to fetch";
+            throw new Error(`请求失败：${msg}。直连被拦截且代理不可达：${proxyMsg}。请确认本地代理已启动（${proxyUrl}）。`);
+          }
+        } else {
+          throw new Error(`请求失败：${msg}。请确认本地代理已启动且地址可达：${proxyUrl}`);
+        }
+      }
+
+      const text = await res.text();
+      const data = safeJsonParse(text) || { raw_text: text };
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText} -> ${JSON.stringify(data)}`);
+      }
+      return { data, url: requestUrl, status: res.status };
+    }
+
+    function clearRuntimeState() {
+      state.characterJobs.clear();
+      state.sceneJobs.clear();
+      state.characterImageByName.clear();
+      state.pollCountByTaskId.clear();
+      state.tasksListSnapshot = null;
+      state.sequenceItems = [];
+      state.sequenceIndex = -1;
+      els.sequencePlayer.pause();
+      els.sequencePlayer.removeAttribute("src");
+      els.sequencePlayer.removeAttribute("poster");
+      els.sequencePlayer.dataset.currentSrc = "";
+      renderAll();
+    }
+
+    function validateScriptObject(obj) {
+      if (!obj || typeof obj !== "object") throw new Error("JSON 顶层必须是对象");
+      if (!Array.isArray(obj.main_character)) throw new Error("main_character 必须是数组");
+      if (!Array.isArray(obj.scenes)) throw new Error("scenes 必须是数组");
+
+      const characterByName = new Map();
+      obj.main_character.forEach((c, idx) => {
+        if (!c || typeof c !== "object") throw new Error(`main_character[${idx}] 不是对象`);
+        const name = String(c.name || "").trim();
+        if (!name) throw new Error(`main_character[${idx}] 缺少 name`);
+        if (characterByName.has(name)) throw new Error(`角色重名：${name}`);
+        if (!String(c.appearance_prompt || "").trim()) throw new Error(`角色 ${name} 缺少 appearance_prompt`);
+        if (!String(c.voice_prompt || "").trim()) throw new Error(`角色 ${name} 缺少 voice_prompt`);
+        characterByName.set(name, c);
+      });
+
+      obj.scenes.forEach((s, idx) => {
+        if (!s || typeof s !== "object") throw new Error(`scenes[${idx}] 不是对象`);
+        if (typeof s.index !== "number") throw new Error(`scenes[${idx}] 缺少数字 index`);
+        if (!String(s.visual_prompt || "").trim()) throw new Error(`scene ${s.index} 缺少 visual_prompt`);
+        if (!Array.isArray(s.has_character)) throw new Error(`scene ${s.index} 的 has_character 必须是数组`);
+        s.has_character.forEach((n) => {
+          if (!characterByName.has(String(n))) {
+            throw new Error(`scene ${s.index} 引用了不存在角色：${n}`);
+          }
+        });
+      });
+
+      return {
+        title: String(obj.title || "未命名剧本"),
+        main_character: obj.main_character,
+        scenes: [...obj.scenes].sort((a, b) => a.index - b.index)
+      };
+    }
+
+    function parseInputAndStore() {
+      const raw = String(els.jsonInput.value || "").trim();
+      if (!raw) throw new Error("请先粘贴 JSON");
+      const parsed = safeJsonParse(raw);
+      if (!parsed) throw new Error("JSON 解析失败，请检查格式");
+      state.parsed = validateScriptObject(parsed);
+      clearRuntimeState();
+      setStatus(`解析成功：${state.parsed.title}`, false);
+      log("解析结果", { title: state.parsed.title, characters: state.parsed.main_character.length, scenes: state.parsed.scenes.length });
+      renderAll();
+      return state.parsed;
+    }
+
+    function getParsedOrThrow() {
+      if (!state.parsed) return parseInputAndStore();
+      return state.parsed;
+    }
+
+    async function runWithConcurrency(items, limit, worker) {
+      const results = new Array(items.length);
+      let cursor = 0;
+      async function runner() {
+        while (!state.stopped) {
+          const i = cursor;
+          cursor += 1;
+          if (i >= items.length) return;
+          try {
+            results[i] = await worker(items[i], i);
+          } catch (error) {
+            results[i] = { error };
+          }
+        }
+      }
+      const workers = Array.from({ length: Math.min(limit, items.length) }, () => runner());
+      await Promise.all(workers);
+      return results;
+    }
+
+    function summarizeStateTag(stateValue) {
+      const s = String(stateValue || "unknown");
+      return `<span class="tag s-${s}">${s}</span>`;
+    }
+
+    function getOrderedSceneVideoItems() {
+      const parsed = state.parsed;
+      if (!parsed) return [];
+      return parsed.scenes
+        .map((scene) => {
+          const job = state.sceneJobs.get(scene.index);
+          if (!job || !job.video_url) return null;
+          return {
+            scene_index: scene.index,
+            video_url: job.video_url,
+            cover_url: job.cover_url || "",
+            task_id: job.task_id || ""
+          };
+        })
+        .filter(Boolean);
+    }
+
+    function getCreationUrl(taskData) {
+      const c = Array.isArray(taskData?.creations) ? taskData.creations[0] : null;
+      return c?.url || c?.watermarked_url || "";
+    }
+
+    function getCoverUrl(taskData) {
+      const c = Array.isArray(taskData?.creations) ? taskData.creations[0] : null;
+      return c?.cover_url || "";
+    }
+
+    async function createCharacterImageTask(character, cfg) {
+      const prompt = cfg.use_voice_in_image_prompt
+        ? `${character.appearance_prompt}\n角色声音气质：${character.voice_prompt}`
+        : `${character.appearance_prompt}`;
+      const payload = {
+        model: cfg.image_model,
+        prompt,
+        seed: cfg.image_seed,
+        aspect_ratio: cfg.image_aspect_ratio,
+        payload: cfg.image_payload
+      };
+      const { data } = await apiCall("POST", IMAGE_ENDPOINT, payload);
+      const taskId = data.task_id || data.id;
+      if (!taskId) throw new Error(`角色 ${character.name} 创建任务成功但没拿到 task_id`);
+
+      state.characterJobs.set(character.name, {
+        role: character,
+        task_id: taskId,
+        state: data.state || "created",
+        request: payload,
+        create_response: data,
+        image_url: "",
+        cover_url: "",
+        poll_history: []
+      });
+      renderAll();
+      return taskId;
+    }
+
+    async function createSceneVideoTask(scene, cfg) {
+      const subjects = scene.has_character.map((name) => {
+        const imageUrl = state.characterImageByName.get(name);
+        if (!imageUrl) {
+          throw new Error(`scene ${scene.index} 缺少角色图：${name}`);
+        }
+        return {
+          name,
+          images: [imageUrl]
+        };
+      });
+
+      const payload = {
+        model: cfg.video_model,
+        auto_subjects: cfg.auto_subjects,
+        subjects,
+        prompt: scene.visual_prompt,
+        audio: cfg.audio,
+        duration: cfg.duration,
+        aspect_ratio: cfg.aspect_ratio,
+        resolution: cfg.resolution,
+        off_peak: cfg.off_peak,
+        payload: JSON.stringify({ title: state.parsed?.title || "", scene_index: scene.index })
+      };
+
+      if (cfg.audio) {
+        payload.audio_type = cfg.audio_type;
+      }
+
+      log(`视频生成请求参数: scene ${scene.index}`, {
+        method: "POST",
+        endpoint: `${API_BASE}${VIDEO_ENDPOINT}`,
+        body: payload
+      });
+      const { data } = await apiCall("POST", VIDEO_ENDPOINT, payload);
+      const taskId = data.task_id || data.id;
+      if (!taskId) throw new Error(`scene ${scene.index} 创建任务成功但没拿到 task_id`);
+
+      state.sceneJobs.set(scene.index, {
+        scene,
+        task_id: taskId,
+        state: data.state || "created",
+        request: payload,
+        create_response: data,
+        video_url: "",
+        cover_url: "",
+        poll_history: []
+      });
+      renderAll();
+      return taskId;
+    }
+
+    async function pollTaskUntilDone(taskId, label, pollInterval, options) {
+      const opts = options || {};
+      const printFinalLog = opts.printFinalLog !== false;
+      let round = 0;
+      while (!state.stopped) {
+        round += 1;
+        state.pollCountByTaskId.set(taskId, round);
+
+        let data;
+        try {
+          const resp = await apiCall("GET", TASK_CREATIONS(taskId));
+          data = resp.data;
+        } catch (error) {
+          if (printFinalLog) {
+            log(`${label} 请求失败`, {
+              task_id: taskId,
+              round,
+              error: error.message || String(error)
+            });
+          }
+          throw error;
+        }
+        const status = data.state || "unknown";
+
+        if (TERMINAL.has(status)) {
+          if (printFinalLog) {
+            log(`${label} 最终结果`, {
+              task_id: taskId,
+              round,
+              state: status,
+              summary: {
+                media_ready: Boolean(getCreationUrl(data)),
+                err_code: data.err_code || null
+              },
+              raw: data
+            });
+          }
+          return { terminal: status, data, round };
+        }
+        await sleep(pollInterval);
+      }
+      throw new Error(`任务已停止：${label}`);
+    }
+
+    async function runCharacterImageStage() {
+      const parsed = getParsedOrThrow();
+      const cfg = getConfig();
+      if (!parsed.main_character.length) throw new Error("没有可生成的角色");
+
+      state.stopped = false;
+      setRunning(true);
+      setStatus("开始并发创建角色图任务...", false);
+
+      const characters = parsed.main_character;
+      const createResults = await runWithConcurrency(characters, cfg.image_concurrency, async (character) => {
+        try {
+          await createCharacterImageTask(character, cfg);
+          return { ok: true };
+        } catch (error) {
+          state.characterJobs.set(character.name, {
+            role: character,
+            task_id: "",
+            state: "failed",
+            error: error.message || String(error),
+            image_url: "",
+            cover_url: "",
+            poll_history: []
+          });
+          renderAll();
+          return { ok: false, error };
+        }
+      });
+
+      const createdCount = createResults.filter((x) => x && x.ok).length;
+      setStatus(`角色图任务创建完成：${createdCount}/${characters.length}，开始并发轮询...`, false);
+
+      const createdJobs = [...state.characterJobs.values()].filter((j) => j.task_id);
+      await runWithConcurrency(createdJobs, cfg.image_concurrency, async (job) => {
+        try {
+          const result = await pollTaskUntilDone(job.task_id, `角色图-${job.role.name}`, cfg.poll_interval, { printFinalLog: false });
+          job.state = result.terminal;
+          job.last_response = result.data;
+          job.image_url = getCreationUrl(result.data);
+          job.cover_url = getCoverUrl(result.data);
+          job.poll_history.push({ round: result.round, state: result.terminal });
+          if (job.state === "success" && job.image_url) {
+            state.characterImageByName.set(job.role.name, job.image_url);
+          }
+        } catch (error) {
+          job.state = "failed";
+          job.error = error.message || String(error);
+        }
+        renderAll();
+      });
+
+      const success = [...state.characterJobs.values()].filter((j) => j.state === "success" && j.image_url).length;
+      setStatus(`角色图阶段完成：成功 ${success}/${parsed.main_character.length}`, success === 0);
+      setRunning(false);
+      renderAll();
+    }
+
+    async function runSceneVideoStage() {
+      const parsed = getParsedOrThrow();
+      const cfg = getConfig();
+      if (!parsed.scenes.length) throw new Error("没有可生成的视频场景");
+
+      const missing = [];
+      parsed.scenes.forEach((scene) => {
+        scene.has_character.forEach((name) => {
+          if (!state.characterImageByName.get(name)) missing.push(`scene ${scene.index} -> ${name}`);
+        });
+      });
+      if (missing.length) {
+        throw new Error(`角色图不完整，无法开始视频阶段。缺失：${missing.join("; ")}`);
+      }
+
+      state.stopped = false;
+      setRunning(true);
+      setStatus("开始并发创建场景视频任务...", false);
+
+      const scenes = parsed.scenes;
+      const createResults = await runWithConcurrency(scenes, cfg.video_concurrency, async (scene) => {
+        try {
+          await createSceneVideoTask(scene, cfg);
+          return { ok: true };
+        } catch (error) {
+          log(`场景视频创建失败: scene ${scene.index}`, { error: error.message || String(error) });
+          state.sceneJobs.set(scene.index, {
+            scene,
+            task_id: "",
+            state: "failed",
+            error: error.message || String(error),
+            video_url: "",
+            cover_url: "",
+            poll_history: []
+          });
+          renderAll();
+          return { ok: false, error };
+        }
+      });
+
+      const createdCount = createResults.filter((x) => x && x.ok).length;
+      setStatus(`场景视频任务创建完成：${createdCount}/${scenes.length}，开始并发轮询...`, false);
+
+      const createdJobs = [...state.sceneJobs.values()].filter((j) => j.task_id);
+      await runWithConcurrency(createdJobs, cfg.video_concurrency, async (job) => {
+        try {
+          const result = await pollTaskUntilDone(job.task_id, `场景视频-${job.scene.index}`, cfg.poll_interval, { printFinalLog: true });
+          job.state = result.terminal;
+          job.last_response = result.data;
+          job.video_url = getCreationUrl(result.data);
+          job.cover_url = getCoverUrl(result.data);
+          job.poll_history.push({ round: result.round, state: result.terminal });
+        } catch (error) {
+          job.state = "failed";
+          job.error = error.message || String(error);
+        }
+        renderAll();
+      });
+
+      const success = [...state.sceneJobs.values()].filter((j) => j.state === "success" && j.video_url).length;
+      setStatus(`场景视频阶段完成：成功 ${success}/${parsed.scenes.length}`, success === 0);
+      setRunning(false);
+      renderAll();
+    }
+
+    async function runAll() {
+      try {
+        await runCharacterImageStage();
+        if (state.stopped) return;
+        await runSceneVideoStage();
+      } catch (error) {
+        setStatus(error.message || "执行失败", true);
+        log("流程异常", { error: error.message || String(error) });
+        setRunning(false);
+      }
+    }
+
+    async function runSingleApifoxSameParamTest() {
+      state.stopped = false;
+      setRunning(true);
+      try {
+        setStatus("开始执行单条 Apifox 同参测试...", false);
+        log("单条Apifox同参测试请求体", APIFOX_SINGLE_TEST_PAYLOAD);
+        const { data, url, status } = await apiCall("POST", IMAGE_ENDPOINT, APIFOX_SINGLE_TEST_PAYLOAD);
+        setStatus(`单条测试成功：HTTP ${status}，task_id=${data.task_id || data.id || "-"}`, false);
+        log("单条Apifox同参测试结果", { endpoint: url, response: data });
+      } catch (error) {
+        setStatus(error.message || "单条测试失败", true);
+        log("单条Apifox同参测试失败", { error: error.message || String(error) });
+      } finally {
+        setRunning(false);
+      }
+    }
+
+    async function refreshTasksList() {
+      try {
+        const allTaskIds = [
+          ...[...state.characterJobs.values()].map((j) => j.task_id).filter(Boolean),
+          ...[...state.sceneJobs.values()].map((j) => j.task_id).filter(Boolean)
+        ];
+        if (!allTaskIds.length) {
+          throw new Error("当前没有任务ID可查询");
+        }
+        const params = new URLSearchParams();
+        allTaskIds.forEach((id) => params.append("task_ids", id));
+        params.set("paper.page", "0");
+        params.set("paper.pagesz", "100");
+        const { data, url } = await apiCall("GET", `${TASK_LIST}?${params.toString()}`);
+        state.tasksListSnapshot = data;
+        log("任务列表查询结果", { endpoint: url, request_task_ids: allTaskIds, response: data });
+        setStatus("任务列表刷新成功", false);
+        renderAll();
+      } catch (error) {
+        setStatus(error.message || "任务列表查询失败", true);
+        log("任务列表查询失败", { error: error.message || String(error) });
+      }
+    }
+
+    function exportResult() {
+      const output = buildStructuredResult();
+      const text = JSON.stringify(output, null, 2);
+      const displayText = JSON.stringify(redactMediaUrls(output, ""), null, 2);
+      els.resultJson.textContent = displayText;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          setStatus("结果 JSON 已复制到剪贴板", false);
+        }).catch(() => {
+          setStatus("结果 JSON 已生成（复制失败，请手动复制）", true);
+        });
+      } else {
+        setStatus("结果 JSON 已生成（当前环境不支持自动复制）", true);
+      }
+    }
+
+    function setRunning(running) {
+      state.running = running;
+      els.runImageBtn.disabled = running;
+      els.singleApifoxBtn.disabled = running;
+      els.runVideoBtn.disabled = running;
+      els.runAllBtn.disabled = running;
+      els.parseBtn.disabled = running;
+      els.refreshTasksBtn.disabled = running;
+      els.fillBtn.disabled = running;
+      els.stopBtn.disabled = !running;
+    }
+
+    function stopAll() {
+      state.stopped = true;
+      setStatus("已请求停止，当前轮询结束后会退出", true);
+    }
+
+    function renderCharacterTable() {
+      const parsed = state.parsed;
+      if (!parsed) {
+        els.characterTable.innerHTML = '<tr><td colspan="4">请先解析 JSON</td></tr>';
+        return;
+      }
+      const rows = parsed.main_character.map((c) => {
+        const job = state.characterJobs.get(c.name);
+        const taskId = job?.task_id || "-";
+        const s = job?.state || "pending";
+        const preview = job?.image_url ? "已加载" : "-";
+        return `<tr><td>${c.name}</td><td>${taskId}</td><td>${summarizeStateTag(s)}</td><td>${preview}</td></tr>`;
+      }).join("");
+      els.characterTable.innerHTML = rows || '<tr><td colspan="4">无角色</td></tr>';
+    }
+
+    function renderSceneTable() {
+      const parsed = state.parsed;
+      if (!parsed) {
+        els.sceneTable.innerHTML = '<tr><td colspan="4">请先解析 JSON</td></tr>';
+        return;
+      }
+      const rows = parsed.scenes.map((s0) => {
+        const job = state.sceneJobs.get(s0.index);
+        const taskId = job?.task_id || "-";
+        const s = job?.state || "pending";
+        const preview = job?.video_url ? "已加载" : "-";
+        return `<tr><td>${s0.index}</td><td>${taskId}</td><td>${summarizeStateTag(s)}</td><td>${preview}</td></tr>`;
+      }).join("");
+      els.sceneTable.innerHTML = rows || '<tr><td colspan="4">无场景</td></tr>';
+    }
+
+    function renderImageGallery() {
+      const parsed = state.parsed;
+      if (!parsed) {
+        els.imageGallery.innerHTML = '<div class="hint">请先解析 JSON</div>';
+        return;
+      }
+      const cards = parsed.main_character.map((c, idx) => {
+        const job = state.characterJobs.get(c.name);
+        const src = job?.image_url || "";
+        const s = job?.state || "pending";
+        const preview = src
+          ? `<img src="${src}" alt="${c.name}" />`
+          : `<div class="empty-thumb">角色图未就绪<br/>${s}</div>`;
+        return `<div class="media-card"><div class="title">#${idx + 1} ${c.name}</div><div class="sub">状态：${summarizeStateTag(s)}</div>${preview}</div>`;
+      }).join("");
+      els.imageGallery.innerHTML = cards || '<div class="hint">暂无角色图</div>';
+    }
+
+    function renderVideoGallery() {
+      const parsed = state.parsed;
+      if (!parsed) {
+        els.videoGallery.innerHTML = '<div class="hint">请先解析 JSON</div>';
+        return;
+      }
+      const cards = parsed.scenes.map((scene) => {
+        const job = state.sceneJobs.get(scene.index);
+        const src = job?.video_url || "";
+        const cover = job?.cover_url || "";
+        const s = job?.state || "pending";
+        const preview = src
+          ? `<video src="${src}" ${cover ? `poster="${cover}"` : ""} controls></video>`
+          : `<div class="empty-thumb">视频未就绪<br/>${s}</div>`;
+        return `<div class="media-card"><div class="title">scene ${scene.index}</div><div class="sub">状态：${summarizeStateTag(s)}</div>${preview}</div>`;
+      }).join("");
+      els.videoGallery.innerHTML = cards || '<div class="hint">暂无视频</div>';
+    }
+
+    function renderSequenceList() {
+      if (!state.sequenceItems.length) {
+        els.sequenceList.innerHTML = "";
+        return;
+      }
+      els.sequenceList.innerHTML = state.sequenceItems.map((item, idx) => {
+        const cls = idx === state.sequenceIndex ? "active" : "";
+        return `<li class="${cls}">scene ${item.scene_index}</li>`;
+      }).join("");
+    }
+
+    function updateSequenceInfoText(prefix) {
+      if (!state.sequenceItems.length) {
+        els.sequenceInfo.textContent = "暂无可拼接视频";
+        return;
+      }
+      const item = state.sequenceItems[state.sequenceIndex];
+      if (!item) {
+        els.sequenceInfo.textContent = `已准备 ${state.sequenceItems.length} 段视频，可从头播放`;
+        return;
+      }
+      els.sequenceInfo.textContent = `${prefix} scene ${item.scene_index}（${state.sequenceIndex + 1}/${state.sequenceItems.length}）`;
+    }
+
+    function playSequenceAt(index, autoPlay) {
+      if (!state.sequenceItems.length) return;
+      if (index < 0 || index >= state.sequenceItems.length) return;
+      state.sequenceIndex = index;
+      const item = state.sequenceItems[index];
+      els.sequencePlayer.src = item.video_url;
+      if (item.cover_url) {
+        els.sequencePlayer.poster = item.cover_url;
+      } else {
+        els.sequencePlayer.removeAttribute("poster");
+      }
+      els.sequencePlayer.dataset.currentSrc = item.video_url;
+      renderSequenceList();
+      updateSequenceInfoText("正在播放");
+      if (autoPlay) {
+        els.sequencePlayer.play().catch(() => {
+          setStatus("浏览器阻止了自动播放，请点击播放器继续", true);
+        });
+      }
+    }
+
+    function renderSequencePlayer() {
+      state.sequenceItems = getOrderedSceneVideoItems();
+      if (!state.sequenceItems.length) {
+        state.sequenceIndex = -1;
+        els.sequencePlayer.pause();
+        els.sequencePlayer.removeAttribute("src");
+        els.sequencePlayer.removeAttribute("poster");
+        els.sequencePlayer.dataset.currentSrc = "";
+        renderSequenceList();
+        updateSequenceInfoText("");
+        return;
+      }
+      const currentSrc = els.sequencePlayer.dataset.currentSrc || "";
+      let index = state.sequenceItems.findIndex((item) => item.video_url === currentSrc);
+      if (index < 0) {
+        index = 0;
+      }
+      if (state.sequenceIndex < 0 || state.sequenceIndex >= state.sequenceItems.length) {
+        state.sequenceIndex = index;
+      } else if (currentSrc && state.sequenceItems[state.sequenceIndex]?.video_url !== currentSrc) {
+        state.sequenceIndex = index;
+      }
+      const active = state.sequenceItems[state.sequenceIndex];
+      if (!currentSrc || currentSrc !== active.video_url) {
+        els.sequencePlayer.src = active.video_url;
+        if (active.cover_url) {
+          els.sequencePlayer.poster = active.cover_url;
+        } else {
+          els.sequencePlayer.removeAttribute("poster");
+        }
+        els.sequencePlayer.dataset.currentSrc = active.video_url;
+      }
+      renderSequenceList();
+      updateSequenceInfoText("当前片段");
+    }
+
+    function playSequenceFromStart() {
+      if (!state.sequenceItems.length) {
+        setStatus("暂无可播放视频，请先生成场景视频", true);
+        return;
+      }
+      playSequenceAt(0, true);
+    }
+
+    function stopSequencePlayback() {
+      els.sequencePlayer.pause();
+      if (els.sequencePlayer.currentTime > 0) {
+        els.sequencePlayer.currentTime = 0;
+      }
+      updateSequenceInfoText("已停止在");
+    }
+
+    function buildStructuredResult() {
+      const parsed = state.parsed;
+      return {
+        title: parsed?.title || "",
+        config: getConfig(),
+        api_base: API_BASE,
+        characters: parsed?.main_character?.map((c) => {
+          const job = state.characterJobs.get(c.name);
+          return {
+            name: c.name,
+            id: c.id,
+            task_id: job?.task_id || null,
+            state: job?.state || "pending",
+            image_ready: Boolean(job?.image_url),
+            cover_ready: Boolean(job?.cover_url),
+            error: job?.error || null
+          };
+        }) || [],
+        scenes: parsed?.scenes?.map((s) => {
+          const job = state.sceneJobs.get(s.index);
+          return {
+            index: s.index,
+            task_id: job?.task_id || null,
+            state: job?.state || "pending",
+            video_ready: Boolean(job?.video_url),
+            cover_ready: Boolean(job?.cover_url),
+            error: job?.error || null
+          };
+        }) || [],
+        sequence_playlist: getOrderedSceneVideoItems(),
+        tasks_list_snapshot: state.tasksListSnapshot
+      };
+    }
+
+    function renderMetrics() {
+      const parsed = state.parsed;
+      els.mChars.textContent = parsed ? String(parsed.main_character.length) : "-";
+      els.mScenes.textContent = parsed ? String(parsed.scenes.length) : "-";
+
+      const imageSuccess = [...state.characterJobs.values()].filter((j) => j.state === "success" && j.image_url).length;
+      const videoSuccess = [...state.sceneJobs.values()].filter((j) => j.state === "success" && j.video_url).length;
+
+      els.mImageSuccess.textContent = parsed ? `${imageSuccess}/${parsed.main_character.length}` : "-";
+      els.mVideoSuccess.textContent = parsed ? `${videoSuccess}/${parsed.scenes.length}` : "-";
+    }
+
+    function renderResultJson() {
+      const displayData = redactMediaUrls(buildStructuredResult(), "");
+      els.resultJson.textContent = JSON.stringify(displayData, null, 2);
+    }
+
+    function renderAll() {
+      renderMetrics();
+      renderCharacterTable();
+      renderSceneTable();
+      renderImageGallery();
+      renderVideoGallery();
+      renderSequencePlayer();
+      renderResultJson();
+    }
+
+    function saveConfig() {
+      const data = {
+        apiKey: els.apiKey.value,
+        requestMode: els.requestMode.value,
+        proxyBaseUrl: els.proxyBaseUrl.value,
+        imageModel: els.imageModel.value,
+        videoModel: els.videoModel.value,
+        imageAspectRatio: els.imageAspectRatio.value,
+        imageSeed: els.imageSeed.value,
+        imagePayload: els.imagePayload.value,
+        duration: els.duration.value,
+        aspectRatio: els.aspectRatio.value,
+        resolution: els.resolution.value,
+        audio: els.audio.checked,
+        audioType: els.audioType.value,
+        autoSubjects: els.autoSubjects.checked,
+        offPeak: els.offPeak.checked,
+        useVoiceInImagePrompt: els.useVoiceInImagePrompt.checked,
+        imageConcurrency: els.imageConcurrency.value,
+        videoConcurrency: els.videoConcurrency.value,
+        pollInterval: els.pollInterval.value,
+        jsonInput: els.jsonInput.value
+      };
+      localStorage.setItem(storageKey, JSON.stringify(data));
+    }
+
+    function loadConfig() {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const d = safeJsonParse(raw);
+      if (!d) return;
+      els.apiKey.value = d.apiKey || "";
+      els.requestMode.value = d.requestMode || "proxy";
+      els.proxyBaseUrl.value = d.proxyBaseUrl || "https://your-worker-name.your-subdomain.workers.dev";
+      els.imageModel.value = d.imageModel || "viduq2";
+      els.videoModel.value = d.videoModel || "viduq3-turbo";
+      els.imageAspectRatio.value = d.imageAspectRatio || "16:9";
+      els.imageSeed.value = d.imageSeed !== undefined ? String(d.imageSeed) : "0";
+      els.imagePayload.value = d.imagePayload !== undefined ? String(d.imagePayload) : "";
+      els.duration.value = d.duration || "5";
+      els.aspectRatio.value = d.aspectRatio || "16:9";
+      els.resolution.value = d.resolution || "720p";
+      els.audio.checked = d.audio !== undefined ? Boolean(d.audio) : true;
+      els.audioType.value = d.audioType || "all";
+      els.autoSubjects.checked = Boolean(d.autoSubjects);
+      els.offPeak.checked = Boolean(d.offPeak);
+      els.useVoiceInImagePrompt.checked = Boolean(d.useVoiceInImagePrompt);
+      els.imageConcurrency.value = d.imageConcurrency || "3";
+      els.videoConcurrency.value = d.videoConcurrency || "2";
+      els.pollInterval.value = d.pollInterval || "8000";
+      if (String(d.jsonInput || "").trim()) {
+        els.jsonInput.value = d.jsonInput;
+      }
+    }
+
+    function bindEvents() {
+      [
+        els.apiKey,
+        els.requestMode,
+        els.proxyBaseUrl,
+        els.imageModel,
+        els.videoModel,
+        els.imageAspectRatio,
+        els.imageSeed,
+        els.imagePayload,
+        els.duration,
+        els.aspectRatio,
+        els.resolution,
+        els.audio,
+        els.audioType,
+        els.autoSubjects,
+        els.offPeak,
+        els.useVoiceInImagePrompt,
+        els.imageConcurrency,
+        els.videoConcurrency,
+        els.pollInterval,
+        els.jsonInput
+      ].forEach((el) => {
+        el.addEventListener("input", saveConfig);
+        el.addEventListener("change", saveConfig);
+      });
+
+      els.fillBtn.addEventListener("click", () => {
+        els.jsonInput.value = JSON.stringify(sampleJson, null, 2);
+        saveConfig();
+        setStatus("已填充示例 JSON", false);
+      });
+
+      els.parseBtn.addEventListener("click", () => {
+        try {
+          parseInputAndStore();
+        } catch (error) {
+          setStatus(error.message || "解析失败", true);
+          log("解析失败", { error: error.message || String(error) });
+        }
+      });
+
+      els.runImageBtn.addEventListener("click", async () => {
+        try {
+          await runCharacterImageStage();
+        } catch (error) {
+          setStatus(error.message || "角色图阶段失败", true);
+          log("角色图阶段失败", { error: error.message || String(error) });
+          setRunning(false);
+        }
+      });
+
+      els.singleApifoxBtn.addEventListener("click", runSingleApifoxSameParamTest);
+
+      els.runVideoBtn.addEventListener("click", async () => {
+        try {
+          await runSceneVideoStage();
+        } catch (error) {
+          setStatus(error.message || "视频阶段失败", true);
+          log("视频阶段失败", { error: error.message || String(error) });
+          setRunning(false);
+        }
+      });
+
+      els.runAllBtn.addEventListener("click", runAll);
+      els.refreshTasksBtn.addEventListener("click", refreshTasksList);
+      els.exportBtn.addEventListener("click", exportResult);
+      els.stopBtn.addEventListener("click", stopAll);
+      els.playSequenceBtn.addEventListener("click", playSequenceFromStart);
+      els.stopSequenceBtn.addEventListener("click", stopSequencePlayback);
+
+      els.sequencePlayer.addEventListener("ended", () => {
+        if (!state.sequenceItems.length) return;
+        const nextIndex = state.sequenceIndex + 1;
+        if (nextIndex < state.sequenceItems.length) {
+          playSequenceAt(nextIndex, true);
+          return;
+        }
+        updateSequenceInfoText("全部播放完成，停在");
+      });
+
+      els.sequencePlayer.addEventListener("play", () => {
+        updateSequenceInfoText("正在播放");
+      });
+    }
+
+    function init() {
+      loadConfig();
+      if (!String(els.jsonInput.value || "").trim()) {
+        els.jsonInput.value = JSON.stringify(sampleJson, null, 2);
+      }
+      bindEvents();
+      renderAll();
+      setStatus("待开始：先解析 JSON，再执行阶段任务", false);
+      log("初始化完成", {
+        api_base: API_BASE,
+        endpoints: {
+          reference2image: `${API_BASE}${IMAGE_ENDPOINT}`,
+          reference2video: `${API_BASE}${VIDEO_ENDPOINT}`,
+          task_creations: `${API_BASE}/tasks/{id}/creations`,
+          tasks_list: `${API_BASE}${TASK_LIST}`
+        }
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
