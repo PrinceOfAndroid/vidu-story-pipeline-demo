@@ -340,23 +340,28 @@
           <div class="row">
             <div class="field">
               <label for="imageModel">图片模型</label>
-              <select id="imageModel">
-                <option value="viduq2">viduq2</option>
-                <option value="viduq1">viduq1</option>
-              </select>
+              <input id="imageModel" type="text" list="imageModelOptions" value="viduq2" placeholder="可输入文档中的新模型名" />
             </div>
             <div class="field">
               <label for="videoModel">视频模型</label>
-              <select id="videoModel">
-                <option value="viduq3-turbo">viduq3-turbo</option>
-                <option value="viduq3">viduq3</option>
-                <option value="viduq2-pro">viduq2-pro</option>
-                <option value="viduq2">viduq2</option>
-                <option value="viduq1">viduq1</option>
-                <option value="vidu2.0">vidu2.0</option>
-              </select>
+              <input id="videoModel" type="text" list="videoModelOptions" value="viduq3-turbo" placeholder="可输入文档中的新模型名" />
             </div>
           </div>
+          <datalist id="imageModelOptions">
+            <option value="viduq2"></option>
+            <option value="viduq1"></option>
+            <option value="vidu2.0"></option>
+            <option value="vidu1.5"></option>
+          </datalist>
+          <datalist id="videoModelOptions">
+            <option value="viduq3-turbo"></option>
+            <option value="viduq3"></option>
+            <option value="viduq2-pro"></option>
+            <option value="viduq2"></option>
+            <option value="viduq1"></option>
+            <option value="vidu2.0"></option>
+            <option value="vidu1.5"></option>
+          </datalist>
 
           <div class="row">
             <div class="field">
@@ -750,8 +755,8 @@
       return {
         request_mode: els.requestMode.value,
         proxy_base_url: normalizeProxyBase(els.proxyBaseUrl.value || "https://vidu-story-proxy.vidustorydemo.workers.dev"),
-        image_model: els.imageModel.value,
-        video_model: els.videoModel.value,
+        image_model: String(els.imageModel.value || "viduq2").trim() || "viduq2",
+        video_model: String(els.videoModel.value || "viduq3-turbo").trim() || "viduq3-turbo",
         image_aspect_ratio: els.imageAspectRatio.value,
         image_seed: Number(els.imageSeed.value || 0),
         image_payload: String(els.imagePayload.value || ""),
